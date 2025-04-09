@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Scanalyze</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" />
+  <style>
+    body {
+      background: linear-gradient(to right, #141e30, #243b55);
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 70px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .icon-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-repeat: repeat;
+      background-size: 150px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/130/130304.png'),
+        url('https://cdn-icons-png.flaticon.com/512/3595/3595455.png'),
+        url('https://cdn-icons-png.flaticon.com/512/5995/5995526.png');
+      filter: blur(15px) opacity(0.06);
+      z-index: -1;
+    }
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.85);
+      padding: 15px 0;
+      z-index: 1000;
+    }
+
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      margin: 0 15px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .navbar a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      border-radius: 15px;
+      max-width: 900px;
+      margin: 40px auto;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.15);
+    }
+
+    h1 {
+      color: #00d4ff;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      margin-top: 40px;
+      color: #ffd700;
+    }
+
+    p {
+      margin: 15px auto;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    ul.list-group {
+      margin: 20px auto;
+      text-align: left;
+      max-width: 700px;
+    }
+
+    .list-group-item {
+      background: rgba(255, 255, 255, 0.07);
+      color: white;
+      border: none;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .list-group-item::before {
+      content: "• ";
+      color: #00ffea;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Icon Background -->
+  <div class="icon-bg"></div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="/">🏠 Home</a>
+    <a href="/compare">🔍 Compare Images</a>
+    <a href="/about">📖 About</a>
+    <a href="/contact">📩 Contact</a>
+  </nav>
+
+  <div class="container">
+    <h1>About Scanalyze</h1>
+
+    <p>
+      Welcome to <strong>Scanalyze</strong>, an advanced AI-powered image analysis and forensics tool built for
+      accuracy and insight. 🚀
+    </p>
+
+    <p>
+      Scanalyze empowers you to perform <strong>background removal, edge detection, histogram analysis, AI-based classification</strong> and <strong>image metadata extraction</strong> with ease and precision.
+    </p>
+
+    <p>
+      Whether you're a <strong>developer, designer, researcher, or forensics analyst</strong>, this tool brings AI and image intelligence right to your fingertips.
+    </p>
+
+    <h3>✨ Features at a Glance</h3>
+    <ul class="list-group">
+      <li class="list-group-item">🔹 AI-Based Image Classification (VGG16 & VGG19)</li>
+      <li class="list-group-item">🔹 Background Removal</li>
+      <li class="list-group-item">🔹 Edge Detection (Horizontal & Vertical)</li>
+      <li class="list-group-item">🔹 Metadata Extraction (EXIF info)</li>
+      <li class="list-group-item">🔹 Image Similarity Comparison</li>
+    </ul>
+
+    <h3>🛡️ Why Use Scanalyze?</h3>
+    <p>
+      Scanalyze is perfect for anyone who wants <strong>fast, intelligent, and reliable image insights</strong>.
+      From forensic professionals analyzing tampered content to creators looking for metadata and structure,
+      Scanalyze helps you <strong>decode what the eye can’t see</strong>.
+    </p>
+
+    <h3>🔍 Role in Digital Forensics</h3>
+    <p>
+      Images can hide stories—Scanalyze helps uncover them. It’s built to assist with:
+    </p>
+
+    <ul class="list-group">
+      <li class="list-group-item">🔸 Verifying authenticity of images</li>
+      <li class="list-group-item">🔸 Extracting metadata like timestamps, location & camera info</li>
+      <li class="list-group-item">🔸 Detecting tampering through pixel comparison</li>
+      <li class="list-group-item">🔸 Matching images by visual similarity and AI classification</li>
+    </ul>
+  </div>
+
+  {% include 'footer.html' %}
+</body>
+
+</html>
