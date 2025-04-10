@@ -195,4 +195,5 @@ def compare_vgg(img1_path, img2_path):
     return "Same classification" if predictions1[0][1] == predictions2[0][1] else "Different classifications"
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable provided by Render
+    app.run(host='0.0.0.0', port=port)
