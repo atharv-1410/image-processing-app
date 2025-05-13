@@ -7,7 +7,7 @@ from rembg import remove
 from PIL import Image, ExifTags
 from flask_cors import CORS
 import matplotlib.pyplot as plt
-from flask import jsonify 
+
 from tensorflow.keras.applications import VGG16, VGG19
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.vgg16 import preprocess_input, decode_predictions
@@ -21,8 +21,6 @@ RESULT_FOLDER = 'static/results/'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-model_vgg16 = VGG16(weights='imagenet')
-model_vgg19 = VGG19(weights='imagenet')
 
 @app.route('/')
 def index():
@@ -137,6 +135,7 @@ def compare_images():
     return render_template('compare.html', pixel_similarity=pixel_similarity, metadata_similarity=metadata_similarity, vgg_similarity=vgg_similarity)
 
 def classify_vgg16(image_path):
+    model_vgg16 = VGG16(weights='imagenet')
     img = image.load_img(image_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
@@ -145,6 +144,7 @@ def classify_vgg16(image_path):
     return decode_predictions(predictions, top=3)[0]
 
 def classify_vgg19(image_path):
+    model_vgg19 = VGG19(weights='imagenet')
     img = image.load_img(image_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
@@ -195,5 +195,5 @@ def compare_vgg(img1_path, img2_path):
     return "Same classification" if predictions1[0][1] == predictions2[0][1] else "Different classifications"
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))  # Use the PORT env variable provided by Render
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable provided by Render
     app.run(host='0.0.0.0', port=port)
