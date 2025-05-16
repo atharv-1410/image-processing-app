@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import os
-import numpy as np
 from PIL import Image, ExifTags
 from flask_cors import CORS
 import urllib.request
 import json
-import requests  # Add this import for API calls
+import requests
+import base64
+from io import BytesIO
+import math
 
 app = Flask(__name__)
 CORS(app)
@@ -15,9 +17,9 @@ RESULT_FOLDER = 'static/results/'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-# Use lightweight Hugging Face API for image classification instead of loading models
+# Use lightweight Hugging Face API for image classification
 HF_API_URL = "https://api-inference.huggingface.co/models/google/vit-base-patch16-224"
-HF_API_KEY = os.environ.get("HF_API_KEY", "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")  # Set this in your environment variables
+HF_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "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")  # Set this in your environment variables
 
 @app.route('/')
 def index():
@@ -59,24 +61,39 @@ def process():
     
     if action == 'background_removal':
         try:
-            # Use a simpler background removal technique
-            img = Image.open(file_path)
-            # Simple background removal using color thresholding
-            # This is a simplified version; for better results, consider a remote API
-            img = img.convert('RGBA')
-            data = np.array(img)
-            # Simple thresholding approach (adjust as needed)
-            r, g, b, a = data.T
-            white_areas = (r > 200) & (g > 200) & (b > 200)
-            data[..., 3][white_areas.T] = 0
-            img = Image.fromarray(data)
-            img.save(output_path, format="PNG")
+            # Using Remove.bg API for better background removal
+            removebg_api_key = os.environ.get("REMOVEBG_API_KEY", "")
+            if not removebg_api_key:
+                return render_template('index.html', filename=filename, 
+                                      error="Background removal requires REMOVEBG_API_KEY environment variable")
+            
+            with open(file_path, 'rb') as img_file:
+                img_data = img_file.read()
+            
+            # API request to remove.bg
+            response = requests.post(
+                'https://api.remove.bg/v1.0/removebg',
+                data={
+                    'size': 'auto',
+                    'format': 'auto'
+                },
+                files={'image_file': img_data},
+                headers={'X-Api-Key': removebg_api_key},
+            )
+            
+            if response.status_code == 200:
+                with open(output_path, 'wb') as out:
+                    out.write(response.content)
+            else:
+                return render_template('index.html', filename=filename, 
+                                      error=f"Background removal API error: {response.status_code}")
         except Exception as e:
-            return render_template('index.html', filename=filename, error=f"Background removal failed: {str(e)}")
+            return render_template('index.html', filename=filename, 
+                                  error=f"Background removal failed: {str(e)}")
     
     elif action == 'edge_detection':
         try:
-            # Simple edge detection using PIL and numpy instead of OpenCV
+            # Simple edge detection using PIL
             from PIL import ImageFilter
             img = Image.open(file_path).convert('L')  # Convert to grayscale
             img = img.filter(ImageFilter.FIND_EDGES)
@@ -86,7 +103,7 @@ def process():
 
     elif action == 'histogram':
         try:
-            # Calculate histogram without matplotlib
+            # Calculate histogram without numpy
             img = Image.open(file_path)
             r, g, b = img.convert('RGB').split()
             # Get histograms
@@ -111,7 +128,7 @@ def process():
     
     elif action == 'classify':
         try:
-            # Use Hugging Face API for classification instead of local model
+            # Use Hugging Face API for classification
             predictions = classify_image_api(file_path)
             return render_template('index.html', filename=filename, predictions=predictions)
         except Exception as e:
@@ -143,12 +160,14 @@ def compare_images():
     metadata_similarity = compare_metadata(img1_path, img2_path)
     
     try:
-        # Simplified comparison without VGG
+        # Simplified comparison using perceptual hash
         visual_similarity = compare_visual(img1_path, img2_path)
-    except Exception:
-        visual_similarity = "Visual comparison unavailable (API error)"
+    except Exception as e:
+        visual_similarity = f"Visual comparison unavailable: {str(e)}"
 
     return render_template('compare.html', 
+                          image1=img1.filename,
+                          image2=img2.filename,
                           pixel_similarity=pixel_similarity, 
                           metadata_similarity=metadata_similarity, 
                           visual_similarity=visual_similarity)
@@ -156,7 +175,7 @@ def compare_images():
 def classify_image_api(image_path):
     """Use Hugging Face API instead of loading models locally"""
     if not HF_API_KEY:
-        return [("API_KEY_MISSING", "Please set HF_API_KEY environment variable", 1.0)]
+        return [("API_KEY_MISSING", "Please set HUGGINGFACE_API_KEY environment variable", 1.0)]
     
     try:
         with open(image_path, "rb") as f:
@@ -189,8 +208,8 @@ def extract_metadata(image_path):
         exif_data = img._getexif() if hasattr(img, '_getexif') else None
 
         if exif_data:
-            metadata = {ExifTags.TAGS.get(tag, tag): value for tag, value in exif_data.items() 
-                       if isinstance(value, (str, int, float))}  # Filter complex types
+            metadata = {ExifTags.TAGS.get(tag, tag): str(value) for tag, value in exif_data.items() 
+                       if tag in ExifTags.TAGS}  # Filter to known tags and stringify values
         else:
             metadata["Info"] = "No EXIF metadata found"
 
@@ -217,15 +236,23 @@ def compare_pixels(img1_path, img2_path):
         img1 = img1.convert('RGB')
         img2 = img2.convert('RGB')
         
-        # Simple pixel comparison
-        img1_data = np.array(img1)
-        img2_data = np.array(img2)
+        # Simple pixel comparison without numpy
+        width, height = img1.size
+        total_pixels = width * height * 3  # RGB channels
+        diff_count = 0
         
-        # Calculate difference (simpler than OpenCV method)
-        difference = np.sum(np.abs(img1_data - img2_data))
-        total_pixels = img1_data.size
+        # Sample pixels (checking every 10th pixel to avoid memory issues)
+        for x in range(0, width, 10):
+            for y in range(0, height, 10):
+                r1, g1, b1 = img1.getpixel((x, y))
+                r2, g2, b2 = img2.getpixel((x, y))
+                diff_count += abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2)
         
-        similarity = 100 - (difference / (total_pixels * 255) * 100)
+        # Scale up the difference count since we sampled
+        diff_count = diff_count * 100 / (width * height / 10 / 10 * 3)
+        
+        # Convert to similarity percentage (max possible difference is 255*3 per pixel)
+        similarity = 100 - (diff_count / (255 * 3) * 100)
         return f"Pixel similarity: {similarity:.2f}%"
     except Exception as e:
         return f"Comparison error: {str(e)}"
@@ -245,28 +272,35 @@ def compare_metadata(img1_path, img2_path):
     return f"Metadata similarity: {similarity:.2f}%"
 
 def compare_visual(img1_path, img2_path):
-    """Compare images using a perceptual hash instead of deep learning"""
+    """Compare images using a perceptual hash"""
     try:
-        from PIL import ImageOps
-        
         def dhash(image, hash_size=8):
             # Convert to grayscale and resize
             image = image.convert('L').resize((hash_size + 1, hash_size))
-            difference = []
+            pixels = []
+            
+            # Calculate pixel values
+            for row in range(hash_size):
+                for col in range(hash_size):
+                    pixels.append(image.getpixel((col, row)))
             
             # Calculate differences between adjacent pixels
+            difference = []
             for row in range(hash_size):
                 for col in range(hash_size):
                     pixel_left = image.getpixel((col, row))
                     pixel_right = image.getpixel((col + 1, row))
                     difference.append(pixel_left > pixel_right)
             
-            # Convert to a 64-bit hexadecimal hash
+            # Convert to a 64-bit integer
             decimal_value = 0
             for index, value in enumerate(difference):
                 if value:
                     decimal_value += 2 ** index
-            return hex(decimal_value)[2:]
+            
+            # Convert to hex string
+            hex_value = hex(decimal_value)[2:].zfill(16)
+            return hex_value
         
         img1 = Image.open(img1_path)
         img2 = Image.open(img2_path)
@@ -275,12 +309,16 @@ def compare_visual(img1_path, img2_path):
         hash2 = dhash(img2)
         
         # Calculate Hamming distance (number of different bits)
-        hash1_int = int(hash1, 16)
-        hash2_int = int(hash2, 16)
-        hamming_distance = bin(hash1_int ^ hash2_int).count('1')
+        distance = 0
+        for i in range(len(hash1)):
+            b1 = bin(int(hash1[i], 16))[2:].zfill(4)
+            b2 = bin(int(hash2[i], 16))[2:].zfill(4)
+            for j in range(len(b1)):
+                if b1[j] != b2[j]:
+                    distance += 1
         
         # Convert to similarity percentage (64 bits total in our hash)
-        similarity = 100 - (hamming_distance / 64) * 100
+        similarity = 100 - (distance / 64) * 100
         return f"Visual similarity: {similarity:.2f}%"
     except Exception as e:
         return f"Visual comparison error: {str(e)}"
