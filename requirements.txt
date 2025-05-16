@@ -1,7 +1,5 @@
-numpy==1.21.0; platform_machine != 'aarch64'
-numpy==1.21.0; platform_machine == 'aarch64' --no-binary numpy
-Pillow==8.3.1
 Flask==2.0.1
+Pillow==8.3.1
 flask-cors==3.0.10
 requests==2.26.0
 gunicorn==20.1.0
